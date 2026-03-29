@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メモ帳</title>
+    <style>
+        /* 全体設定 */
+        /* テーマ共通 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: #1E1E1E;
+            /* ダークグレー */
+            color: #E0E0E0;
+            /* 明るめのグレー */
+            overflow: hidden;
+            /* 右スクロール防止 */
+        }
+
+        /* レイアウト */
+        .container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* メモ一覧画面 */
+        .memo-list-screen {
+            flex: 0 0 350px;
+            /* 固定ベース幅を狭める */
+            min-width: 300px;
+            /* 最小幅 */
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            overflow-y: hidden;
+        }
+
+        /* 編集画面 */
+        .editor-screen {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        /* 検索バー & 新規メモボタン */
+        .search-container {
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .search-bar,
+        .title-input {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .search-bar {
+            flex-grow: 1;
+        }
+
+        .title-input {
+            margin-bottom: 10px;
+        }
+
+        .new-memo-button {
+            margin-left: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            color: #BBB;
+            background: none;
+            border: none;
+            outline: none;
+        }
+
+        .new-memo-button:hover {
+            color: #FFF;
+        }
+
+        /* タイトル一覧 */
+        .memo-list {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .memo-list div {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s ease;
+        }
+
+        .memo-list span {
+            font-size: 14px;
+        }
+
+        /* アクティブなメモ */
+        .active-memo {
+            background: #666;
+            border-left: 4px solid #FFF;
+            /* よりモダンな強調 */
+        }
+
+        /* 編集画面 */
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .button-group button {
+            flex: 1;
+            padding: 6px;
+            font-size: 20px;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            transition: background 0.3s ease, transform 0.2s;
+            border-radius: 4px;
+        }
+
+        .button-group button:hover {
+            background: #666;
+            transform: scale(1.05);
+        }
+
+        /* 本文エリア */
+        .text-area {
+            flex-grow: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #777;
+            border-radius: 4px;
+            outline: none;
+            resize: none;
+        }
+
+
+        /* ダークテーマ */
+        body.dark {
+            background: #1E1E1E;
+            color: #E0E0E0;
+        }
+
+        .dark .memo-list-screen,
+        .dark .editor-screen {
+            background: #2E2E2E;
+            border-right: 1px solid #555;
+        }
+
+        .dark .search-bar,
+        .dark .title-input,
+        .dark .text-area,
+        .dark .button-group button {
+            background: #444;
+            color: #E0E0E0;
+            border: 1px solid #777;
+        }
+
+        .dark .memo-list div {
+            border-bottom: 1px solid #555;
+        }
+
+        .dark .memo-list span {
+            color: #BBB;
+        }
+
+        .dark .memo-list div:hover {
+            background: #555;
+        }
+
+        .dark .active-memo {
+            background: #666;
+            border-left: 4px solid #FFF;
+        }
+
+        .dark {
+            background: #444;
+        }
+
+        /* ライトテーマ */
+        body.light {
+            background: #F0F0F0;
+            color: #333;
+        }
+
+        .light .memo-list-screen,
+        .light .editor-screen {
+            background: #FFFFFF;
+            border-right: 1px solid #DDD;
+        }
+
+        .light .search-bar,
+        .light .title-input,
+        .light .text-area,
+        .light .button-group button {
+            background: #FFF;
+            color: #333;
+            border: 1px solid #CCC;
+        }
+
+        .light .memo-list div {
+            border-bottom: 1px solid #DDD;
+        }
+
+        .light .memo-list span {
+            color: #555;
+        }
+
+        .light .memo-list div:hover {
+            background: #EEE;
+        }
+
+        .light .active-memo {
+            background: #DDD;
+            border-left: 4px solid #000;
+        }
+
+        /* テーマ切り替えボタン */
+        .theme-toggle-button {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #AAA;
+            margin-right: 10px;
+        }
+
+        .theme-toggle-button:hover {
+            color: #000;
+        }
+
+        /* ===== ログイン画面ボタン共通 ===== */
+        #login-screen button {
+            flex: 1;
+            padding: 10px 0;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            background-color: #FFF;
+            border: 1px solid #CCC;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        /* ボタン間の余白 */
+        #login-screen div[style*="display:flex"] button:first-child {
+            margin-right: 8px;
+        }
+
+        /* 入力欄（ID・パスワード）に16px以上のフォントサイズを設定 */
+        #login-screen input[type="text"],
+        #login-screen input[type="password"] {
+            font-size: 16px;
+            padding: 10px;
+            border: 1px solid #CCC;
+            border-radius: 6px;
+            width: 250px;
+            box-sizing: border-box;
+        }
+
+        /* ===== ホバー・フォーカス時の視覚効果 ===== */
+        #login-screen button:hover {
+            background-color: #f8f8f8;
+            border-color: #999;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+        }
+
+        #login-screen button:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* スマホ用（編集画面を完全に隠す） */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .memo-list-screen {
+                flex: none;
+                width: 100%;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .memo-list {
+                overflow-y: auto;
+                max-height: calc(100vh - 60px);
+            }
+
+            .editor-screen {
+                flex: none;
+                width: 100%;
+                position: absolute;
+                top: 0;
+                left: 100%;
+                height: 100%;
+                z-index: 10;
+                background: #3A3A3A;
+                transition: left 0.3s ease-in-out;
+            }
+
+            .editor-screen.active {
+                left: 0;
+            }
+        }
+
+        /* PC表示では back ボタンを隠す & 残りのボタンを広げる */
+        @media (min-width: 769px) {
+            .button-group button:first-child {
+                display: none;
+            }
+
+            .button-group button {
+                flex: 1 1 50%;
+            }
+        }
+
+
+        #password-screen {
+            margin: 30vh 40vw;
+        }
+    </style>
+</head>
+
+<body class="light">
+
+    <!-- ▼ログイン画面（追加） -->
+    <div id="login-screen" class="container"
+        style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <h2>ログイン／新規登録</h2>
+        <input type="text" id="userid" placeholder="ユーザーID" style="width:250px;margin:5px;padding:8px;">
+        <input type="password" id="password" placeholder="パスワード" style="width:250px;margin:5px;padding:8px;">
+        <div style="display:flex;justify-content:space-between;width:250px;margin-top:10px;">
+            <button onclick="login()">ログイン</button>
+            <button onclick="register()">新規登録</button>
+        </div>
+        <p id="login-msg" style="color:#d33;margin-top:10px;"></p>
+    </div>
+
+    <!-- ▼削除確認モーダル -->
+    <div id="delete-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:100;">
+        <div style="background:lightgray; color:#333; padding:20px; border-radius:8px; text-align:center; width:300px;">
+            <p style="margin-bottom:20px;">このメモを削除しますか？</p>
+            <button id="confirm-delete"
+                style="padding:10px;border-radius: 6px;font-weight: bold;border: none;font-size: 15px;width:120px">削除</button>
+            <button id="cancel-delete"
+                style="padding:10px;border-radius: 6px;font-weight: bold;border: none;font-size: 15px;width:120px">キャンセル</button>
+        </div>
+    </div>
+
+    <!-- ▼編集未保存モーダル -->
+    <div id="unsaved-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:100;">
+        <div style="background:lightgray; color:#333; padding:20px; border-radius:8px; text-align:center; width:320px;">
+            <p style="margin-bottom:20px;">編集が保存されていませんが、メモを切り替えてよろしいですか？</p>
+            <button id="unsaved-ok"
+                style="padding:10px;border-radius: 6px;font-weight: bold;border: none;font-size: 15px;width:120px;margin-right:10px;">切り替える</button>
+            <button id="unsaved-cancel"
+                style="padding:10px;border-radius: 6px;font-weight: bold;border: none;font-size: 15px;width:120px;">キャンセル</button>
+        </div>
+    </div>
+
+
+    <!-- ▼メモアプリ部分（初期非表示） -->
+    <div id="memo-app" style="display:none;">
+
+        <div id="container" class="container">
+            <div id="memo-list-screen" class="memo-list-screen">
+                <div class="search-container">
+                    <button class="theme-toggle-button" onclick="toggleTheme()">🌙</button>
+                    <input type="text" id="search-bar" class="search-bar" placeholder="検索...">
+                    <button class="new-memo-button" onclick="createNewMemo()">＋</button>
+                </div>
+                <div class="memo-list" id="memo-list"></div>
+            </div>
+
+            <div id="editor-screen" class="editor-screen">
+                <div class="button-group">
+                    <button onclick="backToList()">back</button>
+                    <button id="save-memo">save</button>
+                    <button id="delete-memo">delete</button>
+                </div>
+                <input type="hidden" id="memo-id">
+                <input type="text" id="memo-title" class="title-input" placeholder="タイトル">
+                <textarea id="memo-body" class="text-area" placeholder="本文"></textarea>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        var memoData = [];
+        var selectedMemoId = null; // 選択中のメモIDを保持
+
+        var isDirty = false;        // 編集済みフラグ
+        var lastSavedTitle = "";    // 比較用：最後にロードしたタイトル
+        var lastSavedBody = "";     // 比較用：最後にロードした本文
+        var pendingAction = null;   // 「切り替え保留中」の処理
+
+        function b64e(u) { return btoa(unescape(encodeURIComponent(u))); }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const savedId = sessionStorage.getItem("userId");
+            if (savedId) {
+                showMemoScreen();
+                return;
+            }
+
+            // URLパラメータ自動ログイン対応
+            const params = new URLSearchParams(location.search);
+            const id = params.get("id");
+            const pw = params.get("pw");
+            if (id) document.getElementById("userid").value = id;
+            if (pw) document.getElementById("password").value = pw;
+            if (id && pw) login();
+
+            // ★ 未保存モーダルのボタン処理
+            var unsavedOk = document.getElementById("unsaved-ok");
+            var unsavedCancel = document.getElementById("unsaved-cancel");
+
+            unsavedOk.onclick = function () {
+                document.getElementById("unsaved-modal").style.display = "none";
+                if (pendingAction) {
+                    var act = pendingAction;
+                    pendingAction = null;
+                    act(); // 実際に切り替えを実行
+                }
+            };
+
+            unsavedCancel.onclick = function () {
+                document.getElementById("unsaved-modal").style.display = "none";
+                pendingAction = null; // 何もしない
+            };
+
+        });
+
+        async function login() {
+            const id = document.getElementById("userid").value.trim();
+            const pw = document.getElementById("password").value.trim();
+            const msg = document.getElementById("login-msg");
+
+            if (!id || !pw) {
+                msg.textContent = "IDとパスワードを入力してください。";
+                return;
+            }
+
+            const res = await fetch("auth.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `mode=login&id=${encodeURIComponent(id)}&pw=${encodeURIComponent(pw)}`
+            });
+            const text = await res.text();
+
+            if (text.includes("ログイン成功")) {
+                sessionStorage.setItem("userId", id);
+                showMemoScreen();
+            } else {
+                msg.textContent = text;
+            }
+        }
+
+        async function register() {
+            const id = document.getElementById("userid").value.trim();
+            const pw = document.getElementById("password").value.trim();
+            const msg = document.getElementById("login-msg");
+
+            if (!id || !pw) {
+                msg.textContent = "IDとパスワードを入力してください。";
+                return;
+            }
+
+            const res = await fetch("auth.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `mode=register&id=${encodeURIComponent(id)}&pw=${encodeURIComponent(pw)}`
+            });
+            msg.textContent = await res.text();
+        }
+
+
+        function toggleTheme() {
+            var currentTheme = document.body.classList.contains("dark") ? "light" : "dark";
+            setTheme(currentTheme);
+            localStorage.setItem("theme", currentTheme);
+        }
+
+        function setTheme(theme) {
+            document.body.classList.remove("dark", "light");
+            document.body.classList.add(theme);
+
+            var themeButton = document.querySelector(".theme-toggle-button");
+            themeButton.textContent = theme === "dark" ? "🌙" : "🌞";
+        }
+
+        function ajaxRequest(url, method, data, callback) {
+            const userId = sessionStorage.getItem("userId") || "";
+
+            // userIdがない場合は何もしない（安全に中断）
+            if (!userId) {
+                console.warn("ユーザーIDが未設定のためメモを読み込めません。");
+                return;
+            }
+
+            var xhr = new XMLHttpRequest();
+            xhr.open(method, url, true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+            // ✅ user パラメータを確実に送信
+            let sendData = data ? data + "&user=" + encodeURIComponent(userId)
+                : "user=" + encodeURIComponent(userId);
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    callback(xhr.responseText);
+                }
+            };
+            xhr.send(sendData);
+        }
+
+
+        function verifyPassword() {
+            var password = document.getElementById("password-input").value;
+            ajaxRequest("memo.php?action=login", "POST", "password=" + encodeURIComponent(password), function (response) {
+                if (response === "success") {
+                    sessionStorage.setItem("authenticated", "true");
+                    showMemoScreen();
+                } else {
+                    document.getElementById("error-message").style.display = "block";
+                }
+            });
+        }
+
+        function showMemoScreen() {
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("memo-app").style.display = "block";
+
+            var savedTheme = localStorage.getItem("theme") || "light";
+            setTheme(savedTheme);
+
+            // ✅ ログイン後にイベントリスナーを登録
+            document.getElementById("save-memo").addEventListener("click", saveMemo);
+            document.getElementById("delete-memo").addEventListener("click", deleteMemo);
+            document.getElementById("search-bar").addEventListener("input", searchMemos);
+            document.querySelector(".new-memo-button").addEventListener("click", createNewMemo);
+
+            // ★ ここから追加：入力変更で dirty フラグ更新
+            var titleEl = document.getElementById("memo-title");
+            var bodyEl = document.getElementById("memo-body");
+            ["input", "change"].forEach(function (ev) {
+                titleEl.addEventListener(ev, markDirty);
+                bodyEl.addEventListener(ev, markDirty);
+            });
+
+            // ★ ここから追加：未保存モーダルのボタン処理
+            var unsavedOk = document.getElementById("unsaved-ok");
+            var unsavedCancel = document.getElementById("unsaved-cancel");
+
+            unsavedOk.onclick = function () {
+                document.getElementById("unsaved-modal").style.display = "none";
+                if (pendingAction) {
+                    var act = pendingAction;
+                    pendingAction = null;
+                    act(); // 実際に切り替えを実行
+                }
+            };
+
+            unsavedCancel.onclick = function () {
+                document.getElementById("unsaved-modal").style.display = "none";
+                pendingAction = null; // 何もしない
+            };
+
+            loadMemos(); // メモ読み込み
+        }
+
+        // ★ 現在の入力を「保存済み状態」として記録
+        function setCleanState() {
+            lastSavedTitle = document.getElementById("memo-title").value;
+            lastSavedBody = document.getElementById("memo-body").value;
+            isDirty = false;
+        }
+
+        // ★ 入力が変わったら dirty 判定
+        function markDirty() {
+            var currentTitle = document.getElementById("memo-title").value;
+            var currentBody = document.getElementById("memo-body").value;
+            isDirty = (currentTitle !== lastSavedTitle || currentBody !== lastSavedBody);
+        }
+
+        // ★ 切り替え要求をラップする関数
+        function requestSwitch(action) {
+            if (!isDirty) {
+                // 未編集 or すでに保存済み → そのまま実行
+                action();
+                return;
+            }
+            // 編集中 → モーダル表示して保留
+            pendingAction = action;
+            var modal = document.getElementById("unsaved-modal");
+            modal.style.display = "flex";
+        }
+
+        function loadMemos() {
+            ajaxRequest("memo.php?action=read", "POST", null, function (response) {
+                memoData = JSON.parse(response);
+                memoData.sort(function (a, b) {
+                    return new Date(b.updated_at) - new Date(a.updated_at);
+                });
+                displayMemos(memoData);
+            });
+        }
+
+        function displayMemos(memos) {
+            var memoList = document.getElementById("memo-list");
+            memoList.innerHTML = "";
+            for (var i = 0; i < memos.length; i++) {
+                var memo = memos[i];
+                var div = document.createElement("div");
+                div.innerHTML = "<span>" + memo.title + "</span><span>" + memo.updated_at + "</span>";
+                div.setAttribute("data-memo", JSON.stringify(memo));
+                div.setAttribute("data-id", memo.id);
+                div.className = memo.id == selectedMemoId ? "active-memo" : ""; // アクティブ状態を保持
+                div.onclick = function () {
+                    var memo = JSON.parse(this.getAttribute("data-memo"));
+                    requestSwitch(function () {
+                        openEditor(memo);
+                    });
+                };
+                memoList.appendChild(div);
+            }
+        }
+
+        function createNewMemo() {
+            requestSwitch(function () {
+                document.getElementById("memo-id").value = "";
+                selectedMemoId = null; // すべてのメモのアクティブを解除
+                var memoList = document.getElementById("memo-list").children;
+                for (var i = 0; i < memoList.length; i++) {
+                    memoList[i].classList.remove("active-memo");
+                }
+
+                document.getElementById("memo-id").value = "new"; // 新規メモ識別用
+                let jst = new Date(new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }));
+                document.getElementById("memo-title").value =
+                    jst.getFullYear() +
+                    ("0" + (jst.getMonth() + 1)).slice(-2) +
+                    ("0" + jst.getDate()).slice(-2);
+                document.getElementById("memo-body").value = "";
+                document.getElementById("editor-screen").classList.add("active");
+                document.getElementById("memo-body").focus();
+
+                // ★ 新規メモの初期状態を「クリーン」として記録
+                setCleanState();
+            });
+        }
+
+
+        function openEditor(memo) {
+            if (document.getElementById("editor-screen").style.display == "none") {
+                document.getElementById("editor-screen").style.display = "flex";
+                document.getElementById("memo-list-screen").style.display = "none";
+            }
+            selectedMemoId = memo.id;
+            document.getElementById("memo-id").value = memo.id;
+            document.getElementById("memo-id").value = memo.id;
+            document.getElementById("memo-title").value = memo.title;
+            document.getElementById("memo-body").value = memo.body.replace(/\\n/g, "\n");
+            document.getElementById("editor-screen").style.display = "flex";
+            highlightActiveMemo();
+            document.getElementById("editor-screen").classList.add("active");
+            // ★ このメモを開いた直後の状態を「保存済み」とみなす
+            setCleanState();
+        }
+
+        function highlightActiveMemo() {
+            var memoList = document.getElementById("memo-list").children;
+            for (var i = 0; i < memoList.length; i++) {
+                var memoId = memoList[i].getAttribute("data-id");
+                memoList[i].className = memoId == selectedMemoId ? "active-memo" : "";
+            }
+        }
+
+        function backToList() {
+            document.getElementById("editor-screen").classList.remove("active");
+        }
+
+        function saveMemo() {
+            var id = document.getElementById("memo-id").value;
+            var title = document.getElementById("memo-title").value;
+            var body = document.getElementById("memo-body").value;
+
+            const encTitle = b64e(title);
+            const encBody = b64e(body);
+
+            ajaxRequest("memo.php?action=save", "POST",
+                "id=" + encodeURIComponent(id) +
+                "&title=" + encodeURIComponent(encTitle) +
+                "&body=" + encodeURIComponent(encBody),
+                function (response) {
+
+                    // ✅ JSONをパース
+                    let result;
+                    try {
+                        result = JSON.parse(response);
+                    } catch (e) {
+                        console.error("JSON解析エラー:", response);
+                        return;
+                    }
+
+                    const newId = result.id;  // ← idだけ取り出す！
+
+                    selectedMemoId = newId;
+                    document.getElementById("memo-id").value = newId;
+
+                    // ✅ 最新の一覧に反映して選択を保持
+                    loadMemosWithSelection(newId);
+
+                    backToList();
+                });
+        }
+
+
+        // ★ 選択状態を保持したまま再読み込みする関数
+        function loadMemosWithSelection(activeId) {
+            ajaxRequest("memo.php?action=read", "POST", "", function (response) {
+                if (!response) return;
+
+                let data;
+                try {
+                    data = JSON.parse(response);
+                } catch (e) {
+                    console.error("JSON解析エラー:", response);
+                    return;
+                }
+
+                memoData = data.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                displayMemos(memoData);
+
+                // ✅ IDを数値化して比較
+                selectedMemoId = Number(activeId);
+                highlightActiveMemo();
+
+            });
+        }
+
+        function deleteMemo() {
+            var id = document.getElementById("memo-id").value;
+            if (!id || id === "new") {
+                alert("このメモはまだ保存されていません。");
+                return;
+            }
+
+            // モーダルを表示
+            const modal = document.getElementById("delete-modal");
+            modal.style.display = "flex";
+
+            // 既存のイベント解除してから再登録
+            const confirmBtn = document.getElementById("confirm-delete");
+            const cancelBtn = document.getElementById("cancel-delete");
+            confirmBtn.onclick = () => {
+                modal.style.display = "none";
+                ajaxRequest("memo.php?action=delete&id=" + encodeURIComponent(id), "POST", null, function () {
+                    ajaxRequest("memo.php?action=read", "POST", null, function (response) {
+                        memoData = JSON.parse(response);
+                        memoData.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                        displayMemos(memoData);
+
+                        if (memoData.length > 0) {
+                            const latest = memoData[0];
+                            selectedMemoId = latest.id;
+                            openEditor(latest);
+                        } else {
+                            selectedMemoId = null;
+                            document.getElementById("memo-id").value = "";
+                            document.getElementById("memo-title").value = "";
+                            document.getElementById("memo-body").value = "";
+                            highlightActiveMemo();
+                        }
+                        document.getElementById("editor-screen").classList.remove("active");
+                    });
+                });
+            };
+            cancelBtn.onclick = () => {
+                modal.style.display = "none";
+            };
+        }
+
+        function searchMemos() {
+            var query = document.getElementById("search-bar").value.toLowerCase();
+            var filteredMemos = memoData.filter(function (memo) {
+                return memo.title.toLowerCase().includes(query) || memo.body.toLowerCase().includes(query);
+            });
+            displayMemos(filteredMemos);
+        }
+    </script>
+
+</body>
+
+</html>
