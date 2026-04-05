@@ -38,13 +38,9 @@
         /* ===== テーマ共通 ===== */
         .container {
             display: flex;
-            width: 100%;
-            max-width: 100%;
-            height: 100vh;
-            height: 100dvh;
+            position: fixed;
+            inset: 0;
             overflow: hidden;
-            overflow-x: hidden;
-            position: relative;
         }
 
         /* ===== 一覧画面 ===== */
@@ -500,13 +496,14 @@
                 height: 100%;
                 position: absolute;
                 top: 0;
-                left: 100%;
-                transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+                left: 0;
+                transform: translateX(100%);
+                transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
                 z-index: 10;
             }
 
             .editor-screen.active {
-                left: 0;
+                transform: translateX(0);
             }
 
             .back-btn {
@@ -635,6 +632,25 @@
         /* カラーピッカー ダーク対応 */
         body.dark .ql-picker.ql-color .ql-picker-options { background: #333; }
         body.dark .ql-snow .ql-color-picker .ql-picker-label svg { stroke: #BBB; }
+
+        /* 色なし（テーマ色に戻す）スウォッチ — 最初の項目に×印 */
+        .ql-snow .ql-color-picker .ql-picker-options .ql-picker-item[data-value=""] {
+            background: transparent !important;
+            position: relative;
+            border: 1px solid #AAA !important;
+        }
+        .ql-snow .ql-color-picker .ql-picker-options .ql-picker-item[data-value=""]::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                to bottom right,
+                transparent calc(50% - 0.5px),
+                #c00 calc(50% - 0.5px),
+                #c00 calc(50% + 0.5px),
+                transparent calc(50% + 0.5px)
+            );
+        }
     </style>
 </head>
 
@@ -732,7 +748,13 @@
                 toolbar: [
                     [{ 'header': [1, 2, 3, false] }],
                     ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'color': [] }],
+                    [{ 'color': [
+                        '',
+                        '#000000', '#444444', '#888888', '#bbbbbb', '#ffffff',
+                        '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
+                        '#f06666', '#ffc266', '#ffff66', '#66b966', '#66a3e0', '#c285ff',
+                        '#a10000', '#b26b00', '#b2b200', '#006100', '#0047b2', '#6b24b2'
+                    ] }],
                     [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                     ['blockquote', 'code-block'],
                     ['link', 'image'],
