@@ -464,18 +464,19 @@
         .modal-buttons button:hover { opacity: 0.85; }
 
         .btn-danger {
-            background: #C0392B;
+            background: #555;
             color: #FFF;
         }
 
         .btn-ok {
-            background: #E67E22;
+            background: #555;
             color: #FFF;
         }
 
         .btn-cancel {
-            background: #555;
-            color: #EEE;
+            background: #333;
+            color: #AAA;
+            border: 1px solid #555;
         }
 
         /* ===== スマホレイアウト ===== */
@@ -554,6 +555,86 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* ===== 表サイズ選択ピッカー ===== */
+        #table-size-picker {
+            display: none;
+            position: fixed;
+            background: #2A2A2A;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 600;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            user-select: none;
+        }
+
+        body.light #table-size-picker {
+            background: #FFF;
+            border-color: #DDD;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .table-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 20px);
+            gap: 3px;
+        }
+
+        .tpick-cell {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #555;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        body.light .tpick-cell { border-color: #CCC; }
+
+        .tpick-cell.tpick-active {
+            background: #666;
+            border-color: #AAA;
+        }
+
+        body.light .tpick-cell.tpick-active {
+            background: #CCC;
+            border-color: #888;
+        }
+
+        .table-pick-label {
+            text-align: center;
+            font-size: 11px;
+            margin-top: 6px;
+            color: #AAA;
+        }
+
+        body.light .table-pick-label { color: #777; }
+
+        /* ===== エディタ内テーブル ===== */
+        .ql-editor table {
+            border-collapse: collapse;
+            max-width: 100%;
+            margin: 8px 0;
+            table-layout: fixed;
+        }
+
+        .ql-editor td, .ql-editor th {
+            padding: 6px 10px;
+            min-width: 60px;
+            border: 1px solid;
+            vertical-align: top;
+            word-break: break-word;
+        }
+
+        body.dark .ql-editor td,
+        body.dark .ql-editor th { border-color: #555; }
+
+        body.light .ql-editor td,
+        body.light .ql-editor th { border-color: #CCC; }
+
+        /* カラーピッカー ダーク対応 */
+        body.dark .ql-picker.ql-color .ql-picker-options { background: #333; }
+        body.dark .ql-snow .ql-color-picker .ql-picker-label svg { stroke: #BBB; }
     </style>
 </head>
 
@@ -591,6 +672,12 @@
                 <button id="unsaved-cancel" class="btn-cancel">キャンセル</button>
             </div>
         </div>
+    </div>
+
+    <!-- ▼表サイズ選択ピッカー -->
+    <div id="table-size-picker">
+        <div class="table-grid" id="table-grid"></div>
+        <div class="table-pick-label" id="table-pick-label">1 × 1</div>
     </div>
 
     <!-- ▼ローディングスピナー -->
@@ -645,6 +732,7 @@
                 toolbar: [
                     [{ 'header': [1, 2, 3, false] }],
                     ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }],
                     [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                     ['blockquote', 'code-block'],
                     ['link', 'image'],
@@ -654,12 +742,111 @@
             placeholder: '本文を入力...'
         });
 
+        // ===== 表挿入ボタンをツールバーに追加 =====
+        (function () {
+            var toolbar = document.querySelector('.ql-toolbar');
+            if (!toolbar) return;
+            var group = document.createElement('span');
+            group.className = 'ql-formats';
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = '表を挿入';
+            btn.className = 'ql-table-btn';
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="14" height="14" rx="1.5"/><line x1="6" y1="1" x2="6" y2="15"/><line x1="11" y1="1" x2="11" y2="15"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="1" y1="11" x2="15" y2="11"/></svg>';
+            btn.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleTablePicker(btn);
+            });
+            group.appendChild(btn);
+            toolbar.appendChild(group);
+        })();
+
+        // ===== 表サイズピッカー =====
+        (function () {
+            var picker = document.getElementById('table-size-picker');
+            var grid = document.getElementById('table-grid');
+            var label = document.getElementById('table-pick-label');
+            var ROWS = 6, COLS = 6;
+            var cells = [];
+
+            for (var r = 1; r <= ROWS; r++) {
+                for (var c = 1; c <= COLS; c++) {
+                    (function (row, col) {
+                        var cell = document.createElement('div');
+                        cell.className = 'tpick-cell';
+                        cell.addEventListener('mouseover', function () {
+                            label.textContent = row + ' × ' + col;
+                            cells.forEach(function (item) {
+                                item.el.classList.toggle('tpick-active',
+                                    item.r <= row && item.c <= col);
+                            });
+                        });
+                        cell.addEventListener('click', function () {
+                            picker.style.display = 'none';
+                            insertTable(row, col);
+                        });
+                        grid.appendChild(cell);
+                        cells.push({ el: cell, r: r, c: c });
+                    })(r, c);
+                }
+            }
+
+            document.addEventListener('click', function (e) {
+                if (!picker.contains(e.target) && !e.target.closest('.ql-table-btn')) {
+                    picker.style.display = 'none';
+                }
+            });
+        })();
+
+        function toggleTablePicker(btn) {
+            var picker = document.getElementById('table-size-picker');
+            if (picker.style.display === 'block') {
+                picker.style.display = 'none';
+                return;
+            }
+            var rect = btn.getBoundingClientRect();
+            picker.style.top = (rect.bottom + 4) + 'px';
+            picker.style.left = rect.left + 'px';
+            picker.style.display = 'block';
+        }
+
+        function insertTable(rows, cols) {
+            var html = '<table><tbody>';
+            for (var r = 0; r < rows; r++) {
+                html += '<tr>';
+                for (var c = 0; c < cols; c++) {
+                    html += '<td><br></td>';
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table><p><br></p>';
+
+            // Quill はテーブルを Delta として扱えないため DOM を直接操作
+            quill.focus();
+            var range = quill.getSelection(true);
+            var index = range ? range.index : quill.getLength() - 1;
+            var [leaf] = quill.getLeaf(index);
+            var node = leaf ? leaf.domNode : null;
+            var block = node;
+            while (block && block.parentNode !== quill.root) {
+                block = block.parentNode;
+            }
+            var tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            var nodes = Array.from(tmp.childNodes);
+            if (block && block.nextSibling) {
+                nodes.forEach(function (n) { quill.root.insertBefore(n, block.nextSibling); });
+            } else {
+                nodes.forEach(function (n) { quill.root.appendChild(n); });
+            }
+            isDirty = true;
+        }
+
         // ===== グローバル状態 =====
         var memoData = [];
         var selectedMemoId = null;
         var isDirty = false;
-        var lastSavedTitle = '';
-        var lastSavedBody = '';
         var pendingAction = null;
 
         function b64e(u) { return btoa(unescape(encodeURIComponent(u))); }
@@ -755,10 +942,12 @@
             document.getElementById('search-bar').addEventListener('input', searchMemos);
 
             // タイトル変更でdirty
-            document.getElementById('memo-title').addEventListener('input', markDirty);
+            document.getElementById('memo-title').addEventListener('input', function () { isDirty = true; });
 
-            // Quill変更でdirty
-            quill.on('text-change', markDirty);
+            // Quillでユーザー操作のみdirty（API経由の読み込みは除外）
+            quill.on('text-change', function (delta, oldDelta, source) {
+                if (source === 'user') isDirty = true;
+            });
 
             loadMemos();
         }
@@ -795,16 +984,7 @@
 
         // ===== 未保存フラグ =====
         function setCleanState() {
-            lastSavedTitle = document.getElementById('memo-title').value;
-            lastSavedBody = quill.root.innerHTML;
             isDirty = false;
-        }
-
-        function markDirty() {
-            isDirty = (
-                document.getElementById('memo-title').value !== lastSavedTitle ||
-                quill.root.innerHTML !== lastSavedBody
-            );
         }
 
         function requestSwitch(action) {
@@ -874,7 +1054,7 @@
                 highlightActiveMemo();
                 document.getElementById('editor-screen').classList.add('active');
                 quill.focus();
-                setCleanState();
+                setTimeout(setCleanState, 0);
             });
         }
 
@@ -883,19 +1063,22 @@
             document.getElementById('memo-id').value = memo.id;
             document.getElementById('memo-title').value = memo.title;
 
-            // HTML本文を読み込む（旧CSV形式の改行エスケープも対応）
             var body = memo.body || '';
             if (body.indexOf('<') === -1 && body.indexOf('\\n') !== -1) {
-                // 旧テキスト形式
+                // 旧テキスト形式（CSV時代の互換）
                 body = body.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
                 quill.setText(body);
+            } else if (body.indexOf('<table') !== -1) {
+                // テーブルを含む場合は innerHTML で直接セット（Quill のモデル外）
+                quill.root.innerHTML = body || '<p><br></p>';
             } else {
                 quill.clipboard.dangerouslyPasteHTML(body);
             }
 
             highlightActiveMemo();
             document.getElementById('editor-screen').classList.add('active');
-            setCleanState();
+            // 非同期で clean にして Quill の API 由来 text-change より後に確実にリセット
+            setTimeout(setCleanState, 0);
         }
 
         function backToList() {
