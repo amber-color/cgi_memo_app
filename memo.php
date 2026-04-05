@@ -1,114 +1,66 @@
 <?php
 header('Content-Type: application/json; charset=UTF-8');
 
-// === 基本設定 ===
-$dir = __DIR__ . '/data/';
-if (!file_exists($dir)) mkdir($dir, 0777, true);
+$dataDir = __DIR__ . '/data';
+if (!is_dir($dataDir)) mkdir($dataDir, 0755, true);
 
-// === ファイル指定 ===
+$dbPath = $dataDir . '/memo.sqlite';
+$db = new PDO('sqlite:' . $dbPath);
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$db->exec("CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    password TEXT NOT NULL
+)");
+$db->exec("CREATE TABLE IF NOT EXISTS memos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    body TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL
+)");
+
 $user = $_POST['user'] ?? $_GET['user'] ?? '';
 if ($user === '') {
     echo json_encode([]);
     exit;
 }
 
-$file = "data/" . basename($user) . ".csv"; // ← ユーザーごとのファイルに切り替え
-if (!file_exists(dirname($file))) mkdir("data", 0777, true);
-
-// === 共通関数 ===
-function read_csv($file) {
-    if (!file_exists($file)) return [];
-
-    $memos = [];
-    $fp = fopen($file, 'r');
-    while (($row = fgetcsv($fp)) !== false) {
-        if (count($row) >= 4) {
-            $memos[] = [
-                'id' => (int)$row[0],
-                'title' => $row[1],
-                'body' => str_replace(["\\r", "\\n"], ["\r", "\n"], $row[2]), // 改行復元
-                'updated_at' => $row[3]
-            ];
-        }
-    }
-    fclose($fp);
-    return $memos;
-}
-
-function get_new_id($file) {
-    $memos = read_csv($file);
-    $max_id = 0;
-    foreach ($memos as $memo) {
-        if ($memo["id"] > $max_id) {
-            $max_id = $memo["id"];
-        }
-    }
-    return $max_id + 1;
-}
-
-// === アクション処理 ===
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 if ($action === 'read') {
-    echo json_encode(read_csv($file), JSON_UNESCAPED_UNICODE);
+    $stmt = $db->prepare("SELECT id, title, body, updated_at FROM memos WHERE user = ? ORDER BY updated_at DESC");
+    $stmt->execute([$user]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode($rows, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 if ($action === 'save') {
-    $memos = read_csv($file);
-    $new_memos = [];
-
-    // 新しいメモのID
-    if ($_POST['id'] === "new") {
-        $id = get_new_id($file);
-    } else {
-        $id = (int)$_POST['id'];
-    }
-
-    $title = base64_decode($_POST['title']);
-    $body  = str_replace(["\r", "\n"], ["\\r", "\\n"], base64_decode($_POST['body']));
+    $id    = $_POST['id'] ?? 'new';
+    $title = base64_decode($_POST['title'] ?? '');
+    $body  = base64_decode($_POST['body'] ?? '');
     $updated_at = date('Y-m-d H:i:s');
-    $found = false;
 
-    foreach ($memos as $memo) {
-        if ($memo['id'] == $id) {
-            $new_memos[] = [$id, $title, $body, $updated_at];
-            $found = true;
-        } else {
-            $new_memos[] = [$memo['id'], $memo['title'], $memo['body'], $memo['updated_at']];
-        }
+    if ($id === 'new') {
+        $stmt = $db->prepare("INSERT INTO memos (user, title, body, updated_at) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$user, $title, $body, $updated_at]);
+        $newId = (int)$db->lastInsertId();
+    } else {
+        $stmt = $db->prepare("UPDATE memos SET title = ?, body = ?, updated_at = ? WHERE id = ? AND user = ?");
+        $stmt->execute([$title, $body, $updated_at, (int)$id, $user]);
+        $newId = (int)$id;
     }
 
-    if (!$found) {
-        $new_memos[] = [$id, $title, $body, $updated_at];
-    }
-
-    $fp = fopen($file, 'w');
-    foreach ($new_memos as $memo) {
-        fputcsv($fp, $memo);
-    }
-    fclose($fp);
-
-    echo json_encode(['id' => $id]);
+    echo json_encode(['id' => $newId]);
     exit;
 }
 
 if ($action === 'delete') {
     $id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
-    $memos = read_csv($file);
-    $new_memos = array_filter($memos, function($memo) use ($id) {
-        return $memo['id'] != $id;
-    });
-
-    $fp = fopen($file, 'w');
-    foreach ($new_memos as $memo) {
-        fputcsv($fp, [$memo['id'], $memo['title'], str_replace("\n", "\\n", $memo['body']), $memo['updated_at']]);
-    }
-    fclose($fp);
-
+    $stmt = $db->prepare("DELETE FROM memos WHERE id = ? AND user = ?");
+    $stmt->execute([$id, $user]);
     echo json_encode(['status' => 'deleted']);
     exit;
 }
 
 echo json_encode(['error' => 'unknown action']);
-?>
