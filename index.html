@@ -518,6 +518,34 @@
                 padding-bottom: env(safe-area-inset-bottom);
             }
         }
+
+        /* ===== ローディングスピナー ===== */
+        #loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+        }
+
+        #loading-overlay.visible {
+            display: flex;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 
@@ -556,6 +584,9 @@
             </div>
         </div>
     </div>
+
+    <!-- ▼ローディングスピナー -->
+    <div id="loading-overlay"><div class="spinner"></div></div>
 
     <!-- ▼メモアプリ -->
     <div id="memo-app" style="display:none;">
@@ -616,6 +647,9 @@
         var pendingAction = null;
 
         function b64e(u) { return btoa(unescape(encodeURIComponent(u))); }
+
+        function showLoading() { document.getElementById('loading-overlay').classList.add('visible'); }
+        function hideLoading() { document.getElementById('loading-overlay').classList.remove('visible'); }
 
         // ===== 初期化 =====
         document.addEventListener('DOMContentLoaded', function () {
@@ -765,7 +799,9 @@
 
         // ===== メモ一覧 =====
         function loadMemos() {
+            showLoading();
             ajaxRequest('memo.php?action=read', 'POST', null, function (response) {
+                hideLoading();
                 try { memoData = JSON.parse(response); } catch (e) { memoData = []; }
                 memoData.sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
                 displayMemos(memoData);
@@ -855,11 +891,13 @@
             var title = document.getElementById('memo-title').value;
             var body = quill.root.innerHTML;
 
+            showLoading();
             ajaxRequest('memo.php?action=save', 'POST',
                 'id=' + encodeURIComponent(id) +
                 '&title=' + encodeURIComponent(b64e(title)) +
                 '&body=' + encodeURIComponent(b64e(body)),
                 function (response) {
+                    hideLoading();
                     var result;
                     try { result = JSON.parse(response); } catch (e) { return; }
 
