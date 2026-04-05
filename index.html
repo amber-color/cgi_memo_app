@@ -630,7 +630,8 @@
         body.light .ql-editor th { border-color: #CCC; }
 
         /* カラーピッカー ダーク対応 */
-        body.dark .ql-picker.ql-color .ql-picker-options { background: #333; }
+        body.dark .ql-picker.ql-color .ql-picker-options,
+        body.dark .ql-picker.ql-background .ql-picker-options { background: #333; }
         body.dark .ql-snow .ql-color-picker .ql-picker-label svg { stroke: #BBB; }
 
         /* 色なし（テーマ色に戻す）スウォッチ — 最初の項目に×印 */
@@ -651,6 +652,36 @@
                 transparent calc(50% + 0.5px)
             );
         }
+
+        /* 表挿入ボタンのアイコン色 — Quill の .ql-stroke 系と同じ色に */
+        .ql-table-btn .ql-stroke { stroke: #444; fill: none; }
+        body.dark .ql-table-btn .ql-stroke { stroke: #BBB; }
+        .ql-table-btn:hover .ql-stroke { stroke: #06c; }
+        body.dark .ql-table-btn:hover .ql-stroke { stroke: #FFF; }
+
+        /* 表埋め込みブロック */
+        .ql-html-table {
+            margin: 4px 0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .ql-html-table table {
+            border-collapse: collapse;
+            min-width: 120px;
+        }
+        .ql-html-table td,
+        .ql-html-table th {
+            border: 1px solid;
+            padding: 6px 10px;
+            min-width: 60px;
+            vertical-align: top;
+            word-break: break-word;
+            outline: none;
+        }
+        body.dark .ql-html-table td,
+        body.dark .ql-html-table th { border-color: #555; }
+        body.light .ql-html-table td,
+        body.light .ql-html-table th { border-color: #CCC; }
     </style>
 </head>
 
@@ -741,6 +772,30 @@
 
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
     <script>
+        // ===== 表用カスタムブロット（Quill初期化前に登録） =====
+        // BlockEmbed として登録することで Quill が内部構造を正規化しない
+        (function () {
+            var BlockEmbed = Quill.import('blots/block/embed');
+            var HtmlTableBlot = (class extends BlockEmbed {
+                static create(value) {
+                    var node = super.create();
+                    node.innerHTML = value;
+                    // セルを編集可能にする
+                    node.querySelectorAll('td, th').forEach(function (cell) {
+                        cell.contentEditable = 'true';
+                    });
+                    return node;
+                }
+                static value(node) {
+                    return node.innerHTML;
+                }
+            });
+            HtmlTableBlot.blotName = 'html-table';
+            HtmlTableBlot.tagName = 'div';
+            HtmlTableBlot.className = 'ql-html-table';
+            Quill.register(HtmlTableBlot, true);
+        })();
+
         // ===== Quill初期化 =====
         var quill = new Quill('#quill-editor', {
             theme: 'snow',
@@ -749,6 +804,12 @@
                     [{ 'header': [1, 2, 3, false] }],
                     ['bold', 'italic', 'underline', 'strike'],
                     [{ 'color': [
+                        '',
+                        '#000000', '#444444', '#888888', '#bbbbbb', '#ffffff',
+                        '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
+                        '#f06666', '#ffc266', '#ffff66', '#66b966', '#66a3e0', '#c285ff',
+                        '#a10000', '#b26b00', '#b2b200', '#006100', '#0047b2', '#6b24b2'
+                    ] }, { 'background': [
                         '',
                         '#000000', '#444444', '#888888', '#bbbbbb', '#ffffff',
                         '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
@@ -774,7 +835,7 @@
             btn.type = 'button';
             btn.title = '表を挿入';
             btn.className = 'ql-table-btn';
-            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="14" height="14" rx="1.5"/><line x1="6" y1="1" x2="6" y2="15"/><line x1="11" y1="1" x2="11" y2="15"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="1" y1="11" x2="15" y2="11"/></svg>';
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="ql-stroke" x="1" y="1" width="14" height="14" rx="1.5"/><line class="ql-stroke" x1="6" y1="1" x2="6" y2="15"/><line class="ql-stroke" x1="11" y1="1" x2="11" y2="15"/><line class="ql-stroke" x1="1" y1="6" x2="15" y2="6"/><line class="ql-stroke" x1="1" y1="11" x2="15" y2="11"/></svg>';
             btn.addEventListener('mousedown', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -842,26 +903,14 @@
                 }
                 html += '</tr>';
             }
-            html += '</tbody></table><p><br></p>';
+            html += '</tbody></table>';
 
-            // Quill はテーブルを Delta として扱えないため DOM を直接操作
             quill.focus();
             var range = quill.getSelection(true);
             var index = range ? range.index : quill.getLength() - 1;
-            var [leaf] = quill.getLeaf(index);
-            var node = leaf ? leaf.domNode : null;
-            var block = node;
-            while (block && block.parentNode !== quill.root) {
-                block = block.parentNode;
-            }
-            var tmp = document.createElement('div');
-            tmp.innerHTML = html;
-            var nodes = Array.from(tmp.childNodes);
-            if (block && block.nextSibling) {
-                nodes.forEach(function (n) { quill.root.insertBefore(n, block.nextSibling); });
-            } else {
-                nodes.forEach(function (n) { quill.root.appendChild(n); });
-            }
+            // html-table ブロットとして挿入 → Quill が内部を正規化しない
+            quill.insertEmbed(index, 'html-table', html, 'user');
+            quill.setSelection(index + 1, 0);
             isDirty = true;
         }
 
@@ -970,6 +1019,13 @@
             quill.on('text-change', function (delta, oldDelta, source) {
                 if (source === 'user') isDirty = true;
             });
+
+            // 表セル内の編集も dirty として検出（Quill のtext-change では補足されない）
+            quill.root.addEventListener('input', function (e) {
+                if (e.target.closest && e.target.closest('.ql-html-table')) {
+                    isDirty = true;
+                }
+            }, true);
 
             loadMemos();
         }
@@ -1090,10 +1146,12 @@
                 // 旧テキスト形式（CSV時代の互換）
                 body = body.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
                 quill.setText(body);
-            } else if (body.indexOf('<table') !== -1) {
-                // テーブルを含む場合は innerHTML で直接セット（Quill のモデル外）
-                quill.root.innerHTML = body || '<p><br></p>';
             } else {
+                // 旧形式の生 <table> を html-table ブロット用 div にラップして移行
+                if (body.indexOf('<table') !== -1 && body.indexOf('ql-html-table') === -1) {
+                    body = body.replace(/<table([\s\S]*?)<\/table>/g,
+                        '<div class="ql-html-table"><table$1</table></div>');
+                }
                 quill.clipboard.dangerouslyPasteHTML(body);
             }
 
