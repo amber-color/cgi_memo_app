@@ -772,14 +772,20 @@
         body.light .ql-html-table th { border-color: #CCC; }
 
         /* ===== チェックリスト二重表示防止 ===== */
-        /* ブラウザ固有の ::marker と Quill の ::before が重複する環境への対策 */
+        /* Quill は .ql-ui::before でチェックボックスを描画するが、
+           ブラウザによって li::before / ::marker も表示され二重になる */
         .ql-editor li[data-list="checked"],
         .ql-editor li[data-list="unchecked"] {
-            list-style-type: none !important;
+            list-style: none !important;
+        }
+        .ql-editor li[data-list="checked"]::before,
+        .ql-editor li[data-list="unchecked"]::before {
+            display: none !important;
+            content: none !important;
         }
         .ql-editor li[data-list="checked"]::marker,
         .ql-editor li[data-list="unchecked"]::marker {
-            content: none !important;
+            content: '' !important;
         }
 
         /* ===== 水平線ブロット ===== */
@@ -997,27 +1003,46 @@
                 static create(value) {
                     var node = super.create();
                     node.innerHTML = value;
-                    // セルを編集可能にする
                     node.querySelectorAll('td, th').forEach(function (cell) {
                         cell.contentEditable = 'true';
-                    });
-                    // キャプチャフェーズでkeydownを横取りし、Quillがembedを削除しないようにする
-                    node.addEventListener('keydown', function (e) {
-                        e.stopPropagation();
-                        // Enter: <br>挿入（Quillの新規ブロック生成を防ぐ）
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            document.execCommand('insertLineBreak');
+                        // 空セルは必ず <br> で初期化
+                        if (!cell.innerHTML || !cell.innerHTML.trim()) {
+                            cell.innerHTML = '<br>';
                         }
-                    }, true);
-                    // セルが空になったら<br>を補完（空セルがあるとQuillがembedを削除する）
-                    new MutationObserver(function () {
-                        node.querySelectorAll('td, th').forEach(function (cell) {
-                            if (!cell.innerHTML || cell.innerHTML.trim() === '') {
-                                cell.innerHTML = '<br>';
+                        cell.addEventListener('keydown', function (e) {
+                            // Quill のキーボードハンドラに届かせない（バブリングを止める）
+                            e.stopPropagation();
+
+                            // Enter: 新規 Quill ブロック生成を防ぎ <br> を挿入
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                document.execCommand('insertLineBreak');
+                                return;
+                            }
+
+                            // Backspace / Delete でセルが空になるのを防ぐ
+                            if (e.key === 'Backspace' || e.key === 'Delete') {
+                                var inner = cell.innerHTML.trim();
+                                // 既に最小状態（空 or <br> のみ）なら削除操作を無効化
+                                if (inner === '' || inner === '<br>') {
+                                    e.preventDefault();
+                                    return;
+                                }
+                                // 全選択状態で削除しようとしている場合は <br> にリセット
+                                var sel = window.getSelection();
+                                if (sel && sel.toString().length > 0 &&
+                                    sel.toString() === cell.textContent) {
+                                    e.preventDefault();
+                                    cell.innerHTML = '<br>';
+                                    var range = document.createRange();
+                                    range.selectNodeContents(cell);
+                                    range.collapse(true);
+                                    sel.removeAllRanges();
+                                    sel.addRange(range);
+                                }
                             }
                         });
-                    }).observe(node, { childList: true, subtree: true, characterData: true });
+                    });
                     return node;
                 }
                 static value(node) {
