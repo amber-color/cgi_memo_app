@@ -129,6 +129,26 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            align-items: center;
+        }
+
+        /* 最大幅1200px・中央寄せのラッパー */
+        .editor-inner {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 1200px;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* 浮島（タイトル行 + ツールバー行） */
+        .editor-island {
+            margin: 12px clamp(8px, 3vw, 48px) 0;
+            border-radius: 12px;
+            overflow: hidden;
+            flex-shrink: 0;
         }
 
         .editor-header {
@@ -151,19 +171,31 @@
             min-width: 0;
         }
 
+        /* 浮島内ツールバー：1行・横スクロール */
+        .editor-island .ql-toolbar.ql-snow {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            border-left: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
+            padding: 4px 8px;
+        }
+        .editor-island .ql-toolbar.ql-snow::-webkit-scrollbar { display: none; }
+        .editor-island .ql-formats {
+            display: inline-flex !important;
+            flex-shrink: 0;
+            vertical-align: top;
+        }
+
         /* ===== Quillエディタ ===== */
         .quill-wrapper {
             flex: 1;
             display: flex;
             flex-direction: column;
             min-height: 0;
-        }
-
-        .quill-wrapper .ql-toolbar {
-            flex-shrink: 0;
-            border-left: none !important;
-            border-right: none !important;
-            border-top: none !important;
         }
 
         .quill-wrapper .ql-container {
@@ -225,16 +257,20 @@
         }
 
         .dark .editor-screen {
-            background: #1E1E1E;
+            background: #1A1A1A;
+        }
+
+        .dark .editor-island {
+            background: #252525;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.5);
         }
 
         .dark .editor-header {
-            background: #252525;
             border-bottom: 1px solid #3A3A3A;
         }
 
         .dark .title-input {
-            background: #1E1E1E;
+            background: transparent;
             color: #E0E0E0;
         }
 
@@ -243,7 +279,7 @@
         /* Quillダークテーマ */
         .dark .ql-toolbar {
             background: #252525 !important;
-            border-bottom: 1px solid #3A3A3A !important;
+            border-top: 1px solid #3A3A3A !important;
         }
 
         .dark .ql-toolbar .ql-stroke { stroke: #BBB; }
@@ -316,16 +352,20 @@
         }
 
         .light .editor-screen {
-            background: #FFF;
+            background: #F0F0F0;
+        }
+
+        .light .editor-island {
+            background: #FAFAFA;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
         }
 
         .light .editor-header {
-            background: #FAFAFA;
             border-bottom: 1px solid #E0E0E0;
         }
 
         .light .title-input {
-            background: #FFF;
+            background: transparent;
             color: #333;
         }
 
@@ -333,7 +373,7 @@
 
         .light .ql-toolbar {
             background: #FAFAFA !important;
-            border-bottom: 1px solid #E0E0E0 !important;
+            border-top: 1px solid #E0E0E0 !important;
         }
 
         .light .ql-container {
@@ -773,21 +813,26 @@
 
             <!-- エディタ -->
             <div id="editor-screen" class="editor-screen">
-                <div class="editor-header">
-                    <button class="icon-btn back-btn" onclick="backToList()" title="一覧へ">
-                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 4.5 6.5 9 11 13.5"/></svg>
-                    </button>
-                    <input type="text" id="memo-title" class="title-input" placeholder="タイトル">
-                    <button class="icon-btn" id="save-memo" title="保存">
-                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 9.5 7 13 14.5 5"/></svg>
-                    </button>
-                    <button class="icon-btn" id="delete-memo" title="削除">
-                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="5" x2="15" y2="5"/><path d="M7.5 5V3.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5V5"/><path d="M5.5 5.5l1 9h5l1-9"/></svg>
-                    </button>
-                </div>
                 <input type="hidden" id="memo-id">
-                <div class="quill-wrapper">
-                    <div id="quill-editor"></div>
+                <div class="editor-inner">
+                    <div class="editor-island">
+                        <div class="editor-header">
+                            <button class="icon-btn back-btn" onclick="backToList()" title="一覧へ">
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 4.5 6.5 9 11 13.5"/></svg>
+                            </button>
+                            <input type="text" id="memo-title" class="title-input" placeholder="タイトル">
+                            <button class="icon-btn" id="save-memo" title="保存 (Ctrl+S)">
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 9.5 7 13 14.5 5"/></svg>
+                            </button>
+                            <button class="icon-btn" id="delete-memo" title="削除">
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="5" x2="15" y2="5"/><path d="M7.5 5V3.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5V5"/><path d="M5.5 5.5l1 9h5l1-9"/></svg>
+                            </button>
+                        </div>
+                        <!-- ql-toolbar はQuill初期化後にJSでここに移動 -->
+                    </div>
+                    <div class="quill-wrapper">
+                        <div id="quill-editor"></div>
+                    </div>
                 </div>
             </div>
 
@@ -849,6 +894,13 @@
             placeholder: '本文を入力...'
         });
 
+        // ===== ツールバーを浮島に移動 =====
+        (function () {
+            var toolbar = document.querySelector('.ql-toolbar');
+            var island = document.querySelector('.editor-island');
+            if (toolbar && island) island.appendChild(toolbar);
+        })();
+
         // ===== ツールバーのピッカードロップダウンを overflow:hidden の外に展開 =====
         (function () {
             var toolbar = document.querySelector('.ql-toolbar');
@@ -905,6 +957,38 @@
             });
             group.appendChild(btn);
             toolbar.appendChild(group);
+        })();
+
+        // ===== 全文コピー・Markdownコピーボタンをツールバーに追加 =====
+        (function () {
+            var toolbar = document.querySelector('.ql-toolbar');
+            if (!toolbar) return;
+
+            function makeBtn(title, svgInner, onClick) {
+                var group = document.createElement('span');
+                group.className = 'ql-formats';
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.title = title;
+                btn.innerHTML = svgInner;
+                btn.addEventListener('mousedown', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClick();
+                });
+                group.appendChild(btn);
+                toolbar.appendChild(group);
+            }
+
+            makeBtn('全文をコピー',
+                '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="ql-stroke" x="5" y="1" width="9" height="11" rx="1.5"/><path class="ql-stroke" d="M3 4H2a1 1 0 00-1 1v9a1 1 0 001 1h8a1 1 0 001-1v-1"/></svg>',
+                function () { copyAllContent(); }
+            );
+
+            makeBtn('Markdownとしてコピー',
+                '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="ql-stroke" x="1" y="3" width="14" height="10" rx="1.5"/><path class="ql-stroke" d="M4 10.5V6l2.5 2.5L9 6v4.5"/><line class="ql-stroke" x1="11" y1="10.5" x2="13" y2="10.5"/><line class="ql-stroke" x1="12" y1="6" x2="12" y2="10.5"/></svg>',
+                function () { copyAsMarkdown(); }
+            );
         })();
 
         // ===== 表サイズピッカー =====
@@ -1090,6 +1174,114 @@
             }, true);
 
             loadMemos();
+        }
+
+        // ===== キーボードショートカット =====
+        document.addEventListener('keydown', function (e) {
+            if (!(e.ctrlKey || e.metaKey)) return;
+            if (e.key === 's' || e.key === 'S') {
+                var editorVisible = document.getElementById('editor-screen').classList.contains('active')
+                    || window.innerWidth > 768;
+                if (editorVisible) {
+                    e.preventDefault();
+                    saveMemo();
+                }
+            } else if (e.key === 'n' || e.key === 'N') {
+                e.preventDefault();
+                createNewMemo();
+            }
+        });
+
+        // ===== 全文コピー =====
+        function copyAllContent() {
+            var html = quill.root.innerHTML;
+            var text = quill.getText();
+            if (navigator.clipboard && window.ClipboardItem) {
+                var item = new ClipboardItem({
+                    'text/html': new Blob([html], { type: 'text/html' }),
+                    'text/plain': new Blob([text], { type: 'text/plain' })
+                });
+                navigator.clipboard.write([item]).catch(function () {
+                    navigator.clipboard.writeText(text);
+                });
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(text);
+            }
+        }
+
+        // ===== Markdownコピー =====
+        function copyAsMarkdown() {
+            var md = htmlToMarkdown(quill.root.innerHTML);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(md);
+            }
+        }
+
+        function htmlToMarkdown(html) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, 'text/html');
+            return domToMd(doc.body).replace(/\n{3,}/g, '\n\n').trim();
+        }
+
+        function domToMd(node) {
+            var out = '';
+            node.childNodes.forEach(function (child) { out += nodeMd(child); });
+            return out;
+        }
+
+        function nodeMd(node) {
+            if (node.nodeType === 3) return node.textContent;
+            if (node.nodeType !== 1) return '';
+            var tag = node.tagName.toLowerCase();
+            var inner = domToMd(node);
+            switch (tag) {
+                case 'h1': return '# ' + inner.trim() + '\n\n';
+                case 'h2': return '## ' + inner.trim() + '\n\n';
+                case 'h3': return '### ' + inner.trim() + '\n\n';
+                case 'p': return inner.trim() ? inner.trim() + '\n\n' : '';
+                case 'br': return '\n';
+                case 'strong': case 'b': return '**' + inner + '**';
+                case 'em': case 'i': return '*' + inner + '*';
+                case 's': case 'del': return '~~' + inner + '~~';
+                case 'u': return inner;
+                case 'code':
+                    return node.parentElement && node.parentElement.tagName === 'PRE'
+                        ? inner : '`' + inner + '`';
+                case 'pre': return '```\n' + node.textContent.trim() + '\n```\n\n';
+                case 'blockquote':
+                    return inner.trim().split('\n').map(function (l) { return '> ' + l; }).join('\n') + '\n\n';
+                case 'ul': return inner + '\n';
+                case 'ol': return inner + '\n';
+                case 'li': {
+                    var p = node.parentElement;
+                    var prefix = p && p.tagName === 'OL'
+                        ? (Array.from(p.children).indexOf(node) + 1) + '. '
+                        : '- ';
+                    return prefix + inner.trim() + '\n';
+                }
+                case 'a': return '[' + inner + '](' + (node.getAttribute('href') || '') + ')';
+                case 'img':
+                    return '![' + (node.getAttribute('alt') || '') + '](' + (node.getAttribute('src') || '') + ')';
+                case 'table': return tableMd(node) + '\n\n';
+                case 'thead': case 'tbody': case 'tr': case 'td': case 'th': return inner;
+                default: return inner;
+            }
+        }
+
+        function tableMd(table) {
+            var rows = Array.from(table.querySelectorAll('tr'));
+            if (!rows.length) return '';
+            var lines = rows.map(function (row) {
+                var cells = Array.from(row.querySelectorAll('td,th')).map(function (c) {
+                    return c.textContent.trim().replace(/\|/g, '\\|');
+                });
+                return '| ' + cells.join(' | ') + ' |';
+            });
+            if (rows.length > 0) {
+                var cols = rows[0].querySelectorAll('td,th').length;
+                lines.splice(1, 0, '| ' + Array(cols).fill('---').join(' | ') + ' |');
+            }
+            return lines.join('\n');
         }
 
         // ===== テーマ =====
