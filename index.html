@@ -638,9 +638,11 @@
         /* ===== ピッカードロップダウン（position:fixed 後の見た目） ===== */
         .ql-snow .ql-picker-options {
             z-index: 9999;
-            max-width: 300px;
+            min-width: 0 !important;
+            max-width: 300px !important;
             width: max-content;
             white-space: normal;
+            box-sizing: border-box;
         }
         body.dark .ql-snow .ql-picker-options {
             background: #2E2E2E !important;
