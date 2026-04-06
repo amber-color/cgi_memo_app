@@ -771,6 +771,17 @@
         body.light .ql-html-table td,
         body.light .ql-html-table th { border-color: #CCC; }
 
+        /* ===== チェックリスト二重表示防止 ===== */
+        /* ブラウザ固有の ::marker と Quill の ::before が重複する環境への対策 */
+        .ql-editor li[data-list="checked"],
+        .ql-editor li[data-list="unchecked"] {
+            list-style-type: none !important;
+        }
+        .ql-editor li[data-list="checked"]::marker,
+        .ql-editor li[data-list="unchecked"]::marker {
+            content: none !important;
+        }
+
         /* ===== 水平線ブロット ===== */
         .ql-hr { margin: 4px 0; line-height: 0; user-select: none; }
         .ql-hr::after {
@@ -990,6 +1001,23 @@
                     node.querySelectorAll('td, th').forEach(function (cell) {
                         cell.contentEditable = 'true';
                     });
+                    // キャプチャフェーズでkeydownを横取りし、Quillがembedを削除しないようにする
+                    node.addEventListener('keydown', function (e) {
+                        e.stopPropagation();
+                        // Enter: <br>挿入（Quillの新規ブロック生成を防ぐ）
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            document.execCommand('insertLineBreak');
+                        }
+                    }, true);
+                    // セルが空になったら<br>を補完（空セルがあるとQuillがembedを削除する）
+                    new MutationObserver(function () {
+                        node.querySelectorAll('td, th').forEach(function (cell) {
+                            if (!cell.innerHTML || cell.innerHTML.trim() === '') {
+                                cell.innerHTML = '<br>';
+                            }
+                        });
+                    }).observe(node, { childList: true, subtree: true, characterData: true });
                     return node;
                 }
                 static value(node) {
