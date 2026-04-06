@@ -1209,6 +1209,26 @@
             }
         });
 
+        // ===== コピーユーティリティ =====
+        function copyText(text) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).catch(function () { execCopy(text); });
+            } else {
+                execCopy(text);
+            }
+        }
+
+        function execCopy(text) {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            document.body.removeChild(ta);
+        }
+
         // ===== 全文コピー =====
         function copyAllContent() {
             var html = quill.root.innerHTML;
@@ -1218,20 +1238,15 @@
                     'text/html': new Blob([html], { type: 'text/html' }),
                     'text/plain': new Blob([text], { type: 'text/plain' })
                 });
-                navigator.clipboard.write([item]).catch(function () {
-                    navigator.clipboard.writeText(text);
-                });
-            } else if (navigator.clipboard) {
-                navigator.clipboard.writeText(text);
+                navigator.clipboard.write([item]).catch(function () { copyText(text); });
+            } else {
+                copyText(text);
             }
         }
 
         // ===== Markdownコピー =====
         function copyAsMarkdown() {
-            var md = htmlToMarkdown(quill.root.innerHTML);
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(md);
-            }
+            copyText(htmlToMarkdown(quill.root.innerHTML));
         }
 
         function htmlToMarkdown(html) {
