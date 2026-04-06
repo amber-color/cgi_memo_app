@@ -763,6 +763,57 @@
         body.dark .ql-html-table th { border-color: #555; }
         body.light .ql-html-table td,
         body.light .ql-html-table th { border-color: #CCC; }
+
+        /* ===== 水平線ブロット ===== */
+        .ql-hr { margin: 4px 0; line-height: 0; user-select: none; }
+        .ql-hr::after {
+            content: '';
+            display: block;
+            border-top: 1px solid;
+        }
+        body.dark .ql-hr::after { border-color: #555; }
+        body.light .ql-hr::after { border-color: #CCC; }
+
+        /* ===== トースト通知 ===== */
+        #sync-toast {
+            position: fixed;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(60,60,60,0.92);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            z-index: 500;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #sync-toast.show { opacity: 1; }
+
+        /* ===== Pull-to-refresh インジケーター ===== */
+        .pull-indicator {
+            height: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            transition: height 0.2s ease;
+        }
+        .pull-indicator.visible { height: 44px; }
+        .pull-spinner {
+            width: 22px;
+            height: 22px;
+            border: 2px solid rgba(128,128,128,0.2);
+            border-top-color: rgba(128,128,128,0.7);
+            border-radius: 50%;
+        }
+        .pull-indicator.refreshing .pull-spinner {
+            animation: spin 0.7s linear infinite;
+        }
     </style>
 </head>
 
@@ -802,6 +853,9 @@
         </div>
     </div>
 
+    <!-- ▼トースト通知 -->
+    <div id="sync-toast"></div>
+
     <!-- ▼表サイズ選択ピッカー -->
     <div id="table-size-picker">
         <div class="table-grid" id="table-grid"></div>
@@ -825,6 +879,7 @@
                         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3H4a1 1 0 00-1 1v10a1 1 0 001 1h3"/><polyline points="11 13 15 9 11 5"/><line x1="15" y1="9" x2="7" y2="9"/></svg>
                     </button>
                 </div>
+                <div id="pull-indicator" class="pull-indicator"><div class="pull-spinner"></div></div>
                 <div class="memo-list" id="memo-list"></div>
             </div>
 
@@ -858,6 +913,19 @@
 
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
     <script>
+        // ===== 水平線用カスタムブロット（Quill初期化前に登録） =====
+        (function () {
+            var BlockEmbed = Quill.import('blots/block/embed');
+            var HrBlot = (class extends BlockEmbed {
+                static create() { return super.create(); }
+                static value() { return true; }
+            });
+            HrBlot.blotName = 'hr-rule';
+            HrBlot.tagName = 'div';
+            HrBlot.className = 'ql-hr';
+            Quill.register(HrBlot, true);
+        })();
+
         // ===== 表用カスタムブロット（Quill初期化前に登録） =====
         // BlockEmbed として登録することで Quill が内部構造を正規化しない
         (function () {
@@ -954,6 +1022,30 @@
                     }
                 }).observe(picker, { attributes: true, attributeFilter: ['class'] });
             });
+        })();
+
+        // ===== 水平線ボタンをツールバーに追加 =====
+        (function () {
+            var toolbar = document.querySelector('.ql-toolbar');
+            if (!toolbar) return;
+            var group = document.createElement('span');
+            group.className = 'ql-formats';
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = '水平線を挿入';
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round"><line class="ql-stroke" x1="1" y1="5" x2="15" y2="5"/><line class="ql-stroke" x1="1" y1="11" x2="15" y2="11"/></svg>';
+            btn.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                quill.focus();
+                var range = quill.getSelection(true);
+                var index = range ? range.index : quill.getLength() - 1;
+                quill.insertEmbed(index, 'hr-rule', true, 'user');
+                quill.setSelection(index + 1, 0);
+                isDirty = true;
+            });
+            group.appendChild(btn);
+            toolbar.appendChild(group);
         })();
 
         // ===== 表挿入ボタンをツールバーに追加 =====
@@ -1106,11 +1198,20 @@
             var pw = params.get('pw');
             if (id) document.getElementById('userid').value = id;
             if (pw) document.getElementById('password').value = pw;
-            if (id && pw) login();
+            if (id && pw) { login(); return; }
 
             // セッション復元
             var savedId = sessionStorage.getItem('userId');
-            if (savedId) showMemoScreen();
+            if (savedId) { showMemoScreen(); return; }
+
+            // PWA自動ログイン（localStorageに保存済みの認証情報を使用）
+            var autoId = localStorage.getItem('autoLoginId');
+            var autoPw = localStorage.getItem('autoLoginPw');
+            if (autoId && autoPw) {
+                document.getElementById('userid').value = autoId;
+                document.getElementById('password').value = autoPw;
+                login();
+            }
 
             // Enterキーでログイン
             document.getElementById('password').addEventListener('keydown', function (e) {
@@ -1138,6 +1239,8 @@
             var text = await res.text();
             if (text.includes('ログイン成功')) {
                 sessionStorage.setItem('userId', id);
+                localStorage.setItem('autoLoginId', id);
+                localStorage.setItem('autoLoginPw', pw);
                 showMemoScreen();
             } else {
                 msg.textContent = text;
@@ -1160,6 +1263,8 @@
 
         function logout() {
             sessionStorage.removeItem('userId');
+            localStorage.removeItem('autoLoginId');
+            localStorage.removeItem('autoLoginPw');
             location.reload();
         }
 
@@ -1191,6 +1296,56 @@
             }, true);
 
             loadMemos();
+
+            // ===== Pull-to-refresh =====
+            var listEl = document.getElementById('memo-list');
+            var pullInd = document.getElementById('pull-indicator');
+            var pullStartY = 0, isPulling = false;
+            listEl.addEventListener('touchstart', function (e) {
+                if (listEl.scrollTop === 0) {
+                    pullStartY = e.touches[0].clientY;
+                    isPulling = true;
+                }
+            }, { passive: true });
+            listEl.addEventListener('touchmove', function (e) {
+                if (!isPulling) return;
+                if (e.touches[0].clientY - pullStartY > 8) {
+                    pullInd.classList.add('visible');
+                }
+            }, { passive: true });
+            listEl.addEventListener('touchend', function () {
+                if (!isPulling) return;
+                isPulling = false;
+                if (pullInd.classList.contains('visible')) {
+                    pullInd.classList.add('refreshing');
+                    loadMemos();
+                }
+            });
+
+            // ===== 疑似リアルタイム同期（30秒ポーリング） =====
+            setInterval(silentSyncMemos, 30000);
+        }
+
+        var lastSyncHash = '';
+        function silentSyncMemos() {
+            ajaxRequest('memo.php?action=read', 'POST', '', function (response) {
+                var newData;
+                try { newData = JSON.parse(response); } catch (e) { return; }
+                newData.sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
+                var hash = newData.map(function (m) { return m.id + ':' + m.updated_at; }).join('|');
+                if (hash === lastSyncHash) return;
+                lastSyncHash = hash;
+                memoData = newData;
+                displayMemos(newData);
+                showToast('他の端末で更新されました');
+            });
+        }
+
+        function showToast(msg) {
+            var el = document.getElementById('sync-toast');
+            el.textContent = msg;
+            el.classList.add('show');
+            setTimeout(function () { el.classList.remove('show'); }, 2500);
         }
 
         // ===== キーボードショートカット =====
@@ -1362,8 +1517,12 @@
             showLoading();
             ajaxRequest('memo.php?action=read', 'POST', null, function (response) {
                 hideLoading();
+                var pullInd = document.getElementById('pull-indicator');
+                if (pullInd) pullInd.classList.remove('visible', 'refreshing');
                 try { memoData = JSON.parse(response); } catch (e) { memoData = []; }
                 memoData.sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
+                var hash = memoData.map(function (m) { return m.id + ':' + m.updated_at; }).join('|');
+                lastSyncHash = hash;
                 displayMemos(memoData);
             });
         }
