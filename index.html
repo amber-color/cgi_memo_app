@@ -132,7 +132,18 @@
             align-items: center;
         }
 
-        /* 最大幅900px・中央寄せのラッパー */
+        /* 浮島：最大幅1200px */
+        .editor-island {
+            width: 100%;
+            max-width: 1200px;
+            margin: 12px clamp(8px, 2vw, 32px) 0;
+            border-radius: 12px;
+            overflow: hidden;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        /* 本文エリア：最大幅900px */
         .editor-inner {
             flex: 1;
             display: flex;
@@ -141,14 +152,6 @@
             max-width: 900px;
             min-height: 0;
             overflow: hidden;
-        }
-
-        /* 浮島（タイトル行 + ツールバー行） */
-        .editor-island {
-            margin: 12px clamp(8px, 3vw, 48px) 0;
-            border-radius: 12px;
-            overflow: hidden;
-            flex-shrink: 0;
         }
 
         .editor-header {
@@ -831,22 +834,24 @@
             <!-- エディタ -->
             <div id="editor-screen" class="editor-screen">
                 <input type="hidden" id="memo-id">
-                <div class="editor-inner">
-                    <div class="editor-island">
-                        <div class="editor-header">
-                            <button class="icon-btn back-btn" onclick="backToList()" title="一覧へ">
-                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 4.5 6.5 9 11 13.5"/></svg>
-                            </button>
-                            <input type="text" id="memo-title" class="title-input" placeholder="タイトル">
-                            <button class="icon-btn" id="save-memo" title="保存 (Ctrl+S)">
-                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 9.5 7 13 14.5 5"/></svg>
-                            </button>
-                            <button class="icon-btn" id="delete-memo" title="削除">
-                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="5" x2="15" y2="5"/><path d="M7.5 5V3.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5V5"/><path d="M5.5 5.5l1 9h5l1-9"/></svg>
-                            </button>
-                        </div>
-                        <!-- ql-toolbar はQuill初期化後にJSでここに移動 -->
+                <!-- 浮島：最大幅1200px -->
+                <div class="editor-island">
+                    <div class="editor-header">
+                        <button class="icon-btn back-btn" onclick="backToList()" title="一覧へ">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 4.5 6.5 9 11 13.5"/></svg>
+                        </button>
+                        <input type="text" id="memo-title" class="title-input" placeholder="タイトル">
+                        <button class="icon-btn" id="save-memo" title="保存 (Ctrl+S)">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 9.5 7 13 14.5 5"/></svg>
+                        </button>
+                        <button class="icon-btn" id="delete-memo" title="削除">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="5" x2="15" y2="5"/><path d="M7.5 5V3.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5V5"/><path d="M5.5 5.5l1 9h5l1-9"/></svg>
+                        </button>
                     </div>
+                    <!-- ql-toolbar はQuill初期化後にJSでここに移動 -->
+                </div>
+                <!-- 本文エリア：最大幅900px -->
+                <div class="editor-inner">
                     <div class="quill-wrapper">
                         <div id="quill-editor"></div>
                     </div>
