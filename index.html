@@ -132,13 +132,13 @@
             align-items: center;
         }
 
-        /* 最大幅900px・中央寄せのラッパー */
+        /* 最大幅1000px・中央寄せのラッパー（タイトル+ツールバー分） */
         .editor-inner {
             flex: 1;
             display: flex;
             flex-direction: column;
             width: 100%;
-            max-width: 900px;
+            max-width: 1000px;
             min-height: 0;
             overflow: hidden;
         }
@@ -197,6 +197,9 @@
             flex-direction: column;
             min-height: 0;
             margin-top: 20px;
+            width: 100%;
+            max-width: 900px;
+            align-self: center;
         }
 
         .quill-wrapper .ql-container {
@@ -397,7 +400,7 @@
             background: transparent !important;
         }
 
-        /* ===== ログイン画面 ===== */
+        /* ===== ログイン画面（常にライトモード） ===== */
         #login-screen {
             display: flex;
             flex-direction: column;
@@ -405,30 +408,33 @@
             justify-content: center;
             height: 100vh;
             height: 100dvh;
-            background: #1E1E1E;
-            color: #E0E0E0;
+            background: #F5F5F5;
+            color: #333;
             gap: 10px;
         }
 
         #login-screen h2 {
             margin-bottom: 10px;
             font-size: 20px;
+            color: #222;
         }
 
         #login-screen input {
             width: 260px;
             padding: 11px 14px;
             font-size: 16px;
-            border: 1px solid #444;
+            border: 1px solid #D0D0D0;
             border-radius: 8px;
-            background: #2E2E2E;
-            color: #E0E0E0;
+            background: #FFF;
+            color: #333;
             outline: none;
         }
 
         #login-screen input:focus {
-            border-color: #888;
+            border-color: #999;
         }
+
+        #login-screen input::placeholder { color: #AAAAAA; }
 
         .login-buttons {
             display: flex;
@@ -451,17 +457,18 @@
         .login-buttons button:hover { opacity: 0.85; }
 
         .btn-login {
-            background: #555;
+            background: #4A4A4A;
             color: #FFF;
         }
 
         .btn-register {
-            background: #444;
-            color: #EEE;
+            background: #E8E8E8;
+            color: #555;
+            border: 1px solid #D0D0D0;
         }
 
         #login-msg {
-            color: #E06060;
+            color: #C0392B;
             font-size: 14px;
             min-height: 20px;
         }
@@ -774,6 +781,51 @@
         body.dark .ql-hr::after { border-color: #555; }
         body.light .ql-hr::after { border-color: #CCC; }
 
+        /* ===== チェックボックスリスト ===== */
+        .ql-editor li[data-list="checked"],
+        .ql-editor li[data-list="unchecked"] {
+            padding-left: 1.6em;
+            list-style: none;
+        }
+        .ql-editor li[data-list="checked"] > .ql-ui,
+        .ql-editor li[data-list="unchecked"] > .ql-ui {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            margin-left: -1.6em;
+            margin-right: 0.45em;
+            vertical-align: middle;
+            position: relative;
+            top: -0.08em;
+            cursor: pointer;
+            border: 1.5px solid;
+            border-radius: 3px;
+        }
+        body.dark .ql-editor li[data-list="checked"] > .ql-ui,
+        body.dark .ql-editor li[data-list="unchecked"] > .ql-ui { border-color: #888; }
+        body.light .ql-editor li[data-list="checked"] > .ql-ui,
+        body.light .ql-editor li[data-list="unchecked"] > .ql-ui { border-color: #AAA; }
+
+        .ql-editor li[data-list="checked"] > .ql-ui {
+            background: #5A8FD0;
+            border-color: #5A8FD0 !important;
+        }
+        .ql-editor li[data-list="checked"] > .ql-ui::after {
+            content: '';
+            position: absolute;
+            left: 2px;
+            top: -1px;
+            width: 5px;
+            height: 9px;
+            border-right: 2px solid #fff;
+            border-bottom: 2px solid #fff;
+            transform: rotate(45deg);
+        }
+        .ql-editor li[data-list="checked"] {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+
         /* ===== トースト通知 ===== */
         #sync-toast {
             position: fixed;
@@ -872,7 +924,7 @@
             <!-- 一覧 -->
             <div id="memo-list-screen" class="memo-list-screen">
                 <div class="list-header">
-                    <button class="icon-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="テーマ切替">🌙</button>
+                    <button class="icon-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="テーマ切替"></button>
                     <input type="search" id="search-bar" class="search-bar" placeholder="検索...">
                     <button class="icon-btn" onclick="createNewMemo()" title="新規メモ">＋</button>
                     <button class="icon-btn" onclick="logout()" title="ログアウト">
@@ -1024,6 +1076,12 @@
             });
         })();
 
+        // ===== <hr> ペースト時の変換（clipboard matcher） =====
+        quill.clipboard.addMatcher('HR', function () {
+            var Delta = Quill.import('delta');
+            return new Delta().insert({ 'hr-rule': true });
+        });
+
         // ===== 水平線ボタンをツールバーに追加 =====
         (function () {
             var toolbar = document.querySelector('.ql-toolbar');
@@ -1063,6 +1121,35 @@
                 e.preventDefault();
                 e.stopPropagation();
                 toggleTablePicker(btn);
+            });
+            group.appendChild(btn);
+            toolbar.appendChild(group);
+        })();
+
+        // ===== チェックボックスボタンをツールバーに追加 =====
+        (function () {
+            var toolbar = document.querySelector('.ql-toolbar');
+            if (!toolbar) return;
+            var group = document.createElement('span');
+            group.className = 'ql-formats';
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = 'チェックボックスリスト';
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="ql-stroke" x="1.5" y="2" width="5" height="5" rx="1"/><polyline class="ql-stroke" points="2.5 4.5 3.5 5.5 5.5 3.5"/><line class="ql-stroke" x1="9" y1="4.5" x2="14.5" y2="4.5"/><rect class="ql-stroke" x="1.5" y="9" width="5" height="5" rx="1"/><line class="ql-stroke" x1="9" y1="11.5" x2="14.5" y2="11.5"/></svg>';
+            btn.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                quill.focus();
+                var range = quill.getSelection(true);
+                if (!range) return;
+                var formats = quill.getFormat(range.index, range.length || 1);
+                var cur = formats.list;
+                if (cur === 'checked' || cur === 'unchecked') {
+                    quill.format('list', false, 'user');
+                } else {
+                    quill.format('list', 'unchecked', 'user');
+                }
+                isDirty = true;
             });
             group.appendChild(btn);
             toolbar.appendChild(group);
@@ -1295,6 +1382,29 @@
                 }
             }, true);
 
+            // チェックボックスリストのクリックでオン/オフを切り替え
+            quill.root.addEventListener('click', function (e) {
+                var ui = e.target.closest && e.target.closest('li[data-list="checked"] > .ql-ui, li[data-list="unchecked"] > .ql-ui');
+                if (!ui) return;
+                var li = ui.parentElement;
+                var current = li.getAttribute('data-list');
+                var blot = Quill.find(li);
+                if (!blot) return;
+                var index = quill.getIndex(blot);
+                quill.formatLine(index, 1, 'list', current === 'checked' ? 'unchecked' : 'checked', 'user');
+                isDirty = true;
+                e.preventDefault();
+            });
+
+            // 表セル内での Backspace/Delete が Quill の embed 削除ロジックに伝播しないよう阻止
+            quill.root.addEventListener('keydown', function (e) {
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                    if (e.target.closest && e.target.closest('.ql-html-table')) {
+                        e.stopPropagation();
+                    }
+                }
+            }, true);
+
             loadMemos();
 
             // ===== Pull-to-refresh =====
@@ -1441,9 +1551,17 @@
                 case 'ol': return inner + '\n';
                 case 'li': {
                     var p = node.parentElement;
-                    var prefix = p && p.tagName === 'OL'
-                        ? (Array.from(p.children).indexOf(node) + 1) + '. '
-                        : '- ';
+                    var dataList = node.getAttribute('data-list');
+                    var prefix;
+                    if (dataList === 'checked') {
+                        prefix = '- [x] ';
+                    } else if (dataList === 'unchecked') {
+                        prefix = '- [ ] ';
+                    } else if (dataList === 'ordered' || (p && p.tagName === 'OL' && !dataList)) {
+                        prefix = (Array.from(p.children).indexOf(node) + 1) + '. ';
+                    } else {
+                        prefix = '- ';
+                    }
                     return prefix + inner.trim() + '\n';
                 }
                 case 'a': return '[' + inner + '](' + (node.getAttribute('href') || '') + ')';
@@ -1478,10 +1596,15 @@
             localStorage.setItem('theme', t);
         }
 
+        var THEME_SVG = {
+            dark: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 11A6.5 6.5 0 0 1 7 2.5a6.5 6.5 0 1 0 8.5 8.5z"/></svg>',
+            light: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><line x1="9" y1="1" x2="9" y2="3"/><line x1="9" y1="15" x2="9" y2="17"/><line x1="1" y1="9" x2="3" y2="9"/><line x1="15" y1="9" x2="17" y2="9"/><line x1="3.05" y1="3.05" x2="4.46" y2="4.46"/><line x1="13.54" y1="13.54" x2="14.95" y2="14.95"/><line x1="3.05" y1="14.95" x2="4.46" y2="13.54"/><line x1="13.54" y1="4.46" x2="14.95" y2="3.05"/></svg>'
+        };
+
         function setTheme(theme) {
             document.body.classList.remove('dark', 'light');
             document.body.classList.add(theme);
-            document.getElementById('theme-toggle-btn').textContent = theme === 'dark' ? '🌙' : '🌞';
+            document.getElementById('theme-toggle-btn').innerHTML = THEME_SVG[theme];
             var meta = document.getElementById('theme-color-meta');
             if (meta) meta.content = theme === 'dark' ? '#1E1E1E' : '#FAFAFA';
         }
